@@ -31,17 +31,6 @@ TurtleBot3Burger {
     InertialUnit {
       name "inertial_unit"
     }
-    Camera {
-      translation 0.06 0 0
-      children [
-        Pose {
-          rotation 0 1 0 1.57
-        }
-      ]
-      fieldOfView 1
-      width 3280
-      height 2464
-    }
     RobotisLds01 {
     }
   ]
