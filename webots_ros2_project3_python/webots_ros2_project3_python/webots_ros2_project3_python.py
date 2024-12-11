@@ -98,7 +98,7 @@ class WallWalker(Node):
             else:
                 self.cmd.angular.z = 0.5  # Turn left
             self.publisher_.publish(self.cmd)
-            #self.get_logger().info('Turning to avoid front obstacle')
+            self.get_logger().info('Turning to avoid front obstacle')
             self.turtlebot_moving = True
         else:
             # Space in front, follow the wall on the right side
@@ -106,19 +106,19 @@ class WallWalker(Node):
                 # Robot is too close to the right wall, turn left slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = 0.1
-                #self.get_logger().info('Too close to wall, adjusting left')
+                self.get_logger().info('Too close to wall, adjusting left')
                 self.found_wall = True
                 self.time_last_wall = current_time
             elif right_lidar_min > SAFE_STOP_DISTANCE + 0.2:
                 # Robot is too far from the right wall, turn right slightly
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = -0.18
-                #self.get_logger().info('Too far from wall, adjusting right')
+                self.get_logger().info('Too far from wall, adjusting right')
             else:
                 # Distance is optimal, move forward
                 self.cmd.linear.x = LINEAR_VEL
                 self.cmd.angular.z = 0.0
-                #self.get_logger().info('Following wall')
+                self.get_logger().info('Following wall')
                 self.found_wall = True
                 self.time_last_wall = current_time
 
