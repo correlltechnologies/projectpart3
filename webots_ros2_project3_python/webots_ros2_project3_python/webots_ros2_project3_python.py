@@ -67,6 +67,32 @@ class WallWalker(Node):
         self.current_pos = msg2.pose.pose.position
         self.current_orientation = msg2.pose.pose.orientation
 
+        # Check for stall
+        if self.pose_saved is not None:
+            diffX = math.fabs(self.pose_saved.x - self.current_pos.x)
+            diffY = math.fabs(self.pose_saved.y - self.current_pos.y)
+            
+            # Update stationary time if robot has not moved significantly 
+            if diffX < 0.00125 and diffY < 0.00125:
+                current_time = time.time()
+                self.time_stationary = current_time - self.last_move_time
+                #self.last_move_time = current_time
+            else:
+                # Reset stall timer if the robot has moved
+                self.time_stationary = 0.0
+                self.last_move_time = time.time()
+
+        self.pose_saved = self.current_pos  # Save current position for next comparison
+        
+        timer_val = time.time() - self.timer_start # Emergency stall
+        if timer_val >= 60:
+            if self.timer_pos is not None:
+                timerDiffX = math.fabs(self.timer_pos.x - self.current_pos.x)
+                timerDiffY = math.fabs(self.timer_pos.y - self.current_pos.y)
+                if timerDiffX < 0.01 and timerDiffY < 0.01:
+                    self.time_stationary = 6
+            self.timer_pos = self.current_pos
+
     def timer_callback(self):
         if len(self.scan_cleaned) == 0 or self.current_pos is None:
             self.turtlebot_moving = False
@@ -77,7 +103,8 @@ class WallWalker(Node):
         # Get lidar readings
         left_lidar_min = min(self.scan_cleaned[LEFT_SIDE_INDEX:LEFT_FRONT_INDEX])
         right_lidar_min = min(self.scan_cleaned[RIGHT_FRONT_INDEX:RIGHT_SIDE_INDEX])
-        front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
+        #front_lidar_min = min(self.scan_cleaned[LEFT_FRONT_INDEX:RIGHT_FRONT_INDEX])
+        front_lidar_min = min(self.scan_cleaned[330:] + self.scan_cleaned[0:30])
         
         # Wall-following logic
         
@@ -89,7 +116,32 @@ class WallWalker(Node):
             self.found_wall = False
         
         # Check robot status
-        if front_lidar_min < LIDAR_AVOID_DISTANCE:
+        if self.stall:
+            self.cmd.linear.x = -0.5  # Reverse to recover from stall
+            self.cmd.angular.z = 0.0
+            self.publisher_.publish(self.cmd)
+            self.stall = False
+        elif self.recovery:
+            self.cmd.linear.x = 0.0 
+            if right_lidar_min > left_lidar_min: # Rotate to find a new path
+                self.cmd.angular.z = -0.8  # Turn right
+            else:
+                self.cmd.angular.z = 0.8  # Turn left
+            self.publisher_.publish(self.cmd)
+            self.recovery = False
+            self.time_stationary = 0.0
+            self.last_move_time = time.time()
+            self.timer_start = time.time()
+        elif self.time_stationary >= STALL_TIME_THRESHOLD:
+            self.cmd.linear.x = -0.5  # Reverse to recover from stall
+            self.cmd.angular.z = 0.0
+            self.publisher_.publish(self.cmd)
+            self.get_logger().info('Stalled, recovering')
+            self.time_stationary = 0.0
+            self.last_move_time = time.time()
+            self.stall = True  # Reset stall flag
+            self.recovery = True # Set recovery flag
+        elif front_lidar_min < LIDAR_AVOID_DISTANCE:
             # Obstacle in front: slow down and turn
             self.cmd.linear.x = 0.07
             if right_lidar_min > SAFE_STOP_DISTANCE + 0.3 and self.found_wall == True: # Needs to turn, but follow the wall
@@ -114,6 +166,7 @@ class WallWalker(Node):
                 self.cmd.linear.x = 0.10
                 self.cmd.angular.z = -0.18
                 self.get_logger().info('Too far from wall, adjusting right')
+                #self.found_wall == False
             else:
                 # Distance is optimal, move forward
                 self.cmd.linear.x = LINEAR_VEL
