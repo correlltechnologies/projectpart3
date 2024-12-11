@@ -45,9 +45,9 @@ class WallFollower(Node):
         self.cmd = Twist()
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
         self.wall_found = False  # Track if wall is found
-        # Add an iteration counter and a constant N
+        self.stuck_counter = 0
         self.iteration_counter = 0
-        self.N = 50  # Change this to your desired number of iterations
+        self.N = 50
 
     def listener_callback1(self, msg1):
         scan = msg1.ranges
