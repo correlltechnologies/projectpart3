@@ -85,6 +85,6 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard
 ### RUN SAMPLE CONTROLLER
 
 <pre>
-ros2 run webots_ros2_homework4_python webots_ros2_homework4_python
+ros2 run webots_ros2_project3_python webots_ros2_project3_python
 </pre>
 
